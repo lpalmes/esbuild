@@ -5319,6 +5319,10 @@ func (p *parser) parsePath() (logger.Loc, string, *[]ast.AssertEntry) {
 		assertions = &entries
 	}
 
+	if pathText == "react-native" {
+		pathText = "react-native-web"
+	}
+
 	return pathLoc, pathText, assertions
 }
 
