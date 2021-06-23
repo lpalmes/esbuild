@@ -3,10 +3,10 @@ package css_ast
 import (
 	"strconv"
 
-	"github.com/evanw/esbuild/internal/ast"
-	"github.com/evanw/esbuild/internal/css_lexer"
-	"github.com/evanw/esbuild/internal/helpers"
-	"github.com/evanw/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/ast"
+	"github.com/lpalmes/esbuild/internal/css_lexer"
+	"github.com/lpalmes/esbuild/internal/helpers"
+	"github.com/lpalmes/esbuild/internal/logger"
 )
 
 // CSS syntax comes in two layers: a minimal syntax that generally accepts

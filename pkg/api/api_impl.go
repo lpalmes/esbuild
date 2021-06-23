@@ -13,20 +13,20 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/evanw/esbuild/internal/api_helpers"
-	"github.com/evanw/esbuild/internal/ast"
-	"github.com/evanw/esbuild/internal/bundler"
-	"github.com/evanw/esbuild/internal/cache"
-	"github.com/evanw/esbuild/internal/compat"
-	"github.com/evanw/esbuild/internal/config"
-	"github.com/evanw/esbuild/internal/fs"
-	"github.com/evanw/esbuild/internal/graph"
-	"github.com/evanw/esbuild/internal/helpers"
-	"github.com/evanw/esbuild/internal/js_ast"
-	"github.com/evanw/esbuild/internal/js_lexer"
-	"github.com/evanw/esbuild/internal/js_parser"
-	"github.com/evanw/esbuild/internal/logger"
-	"github.com/evanw/esbuild/internal/resolver"
+	"github.com/lpalmes/esbuild/internal/api_helpers"
+	"github.com/lpalmes/esbuild/internal/ast"
+	"github.com/lpalmes/esbuild/internal/bundler"
+	"github.com/lpalmes/esbuild/internal/cache"
+	"github.com/lpalmes/esbuild/internal/compat"
+	"github.com/lpalmes/esbuild/internal/config"
+	"github.com/lpalmes/esbuild/internal/fs"
+	"github.com/lpalmes/esbuild/internal/graph"
+	"github.com/lpalmes/esbuild/internal/helpers"
+	"github.com/lpalmes/esbuild/internal/js_ast"
+	"github.com/lpalmes/esbuild/internal/js_lexer"
+	"github.com/lpalmes/esbuild/internal/js_parser"
+	"github.com/lpalmes/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/resolver"
 )
 
 func validatePathTemplate(template string) []config.PathTemplate {
@@ -225,6 +225,8 @@ func validateLoader(value Loader) config.Loader {
 		return config.LoaderTS
 	case LoaderTSX:
 		return config.LoaderTSX
+	case LoaderFlow:
+		return config.LoaderFlow
 	case LoaderJSON:
 		return config.LoaderJSON
 	case LoaderText:

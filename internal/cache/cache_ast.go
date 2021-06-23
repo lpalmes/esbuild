@@ -3,11 +3,11 @@ package cache
 import (
 	"sync"
 
-	"github.com/evanw/esbuild/internal/css_ast"
-	"github.com/evanw/esbuild/internal/css_parser"
-	"github.com/evanw/esbuild/internal/js_ast"
-	"github.com/evanw/esbuild/internal/js_parser"
-	"github.com/evanw/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/css_ast"
+	"github.com/lpalmes/esbuild/internal/css_parser"
+	"github.com/lpalmes/esbuild/internal/js_ast"
+	"github.com/lpalmes/esbuild/internal/js_parser"
+	"github.com/lpalmes/esbuild/internal/logger"
 )
 
 // This cache intends to avoid unnecessarily re-parsing files in subsequent

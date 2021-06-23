@@ -14,10 +14,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/evanw/esbuild/internal/config"
-	"github.com/evanw/esbuild/internal/fs"
-	"github.com/evanw/esbuild/internal/helpers"
-	"github.com/evanw/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/config"
+	"github.com/lpalmes/esbuild/internal/fs"
+	"github.com/lpalmes/esbuild/internal/helpers"
+	"github.com/lpalmes/esbuild/internal/logger"
 )
 
 ////////////////////////////////////////////////////////////////////////////////

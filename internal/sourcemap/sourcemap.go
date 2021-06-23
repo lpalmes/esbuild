@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"unicode/utf8"
 
-	"github.com/evanw/esbuild/internal/helpers"
+	"github.com/lpalmes/esbuild/internal/helpers"
 )
 
 type Mapping struct {

@@ -1,8 +1,8 @@
 package css_parser
 
 import (
-	"github.com/evanw/esbuild/internal/css_ast"
-	"github.com/evanw/esbuild/internal/css_lexer"
+	"github.com/lpalmes/esbuild/internal/css_ast"
+	"github.com/lpalmes/esbuild/internal/css_lexer"
 )
 
 func (p *parser) mangleBoxShadow(tokens []css_ast.Token) []css_ast.Token {

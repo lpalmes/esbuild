@@ -5,9 +5,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/evanw/esbuild/internal/ast"
-	"github.com/evanw/esbuild/internal/css_ast"
-	"github.com/evanw/esbuild/internal/css_lexer"
+	"github.com/lpalmes/esbuild/internal/ast"
+	"github.com/lpalmes/esbuild/internal/css_ast"
+	"github.com/lpalmes/esbuild/internal/css_lexer"
 )
 
 const quoteForURL rune = -1

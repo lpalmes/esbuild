@@ -6,8 +6,8 @@
 package runtime
 
 import (
-	"github.com/evanw/esbuild/internal/compat"
-	"github.com/evanw/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/compat"
+	"github.com/lpalmes/esbuild/internal/logger"
 )
 
 // The runtime source is always at a special index. The index is always zero
@@ -26,7 +26,7 @@ func code(isES6 bool) string {
 	// causes name collisions. Some examples:
 	//
 	// * The "tslib" library will overwrite esbuild's helper functions if the bundled
-	//   code is run in the global scope: https://github.com/evanw/esbuild/issues/1102
+	//   code is run in the global scope: https://github.com/lpalmes/esbuild/issues/1102
 	//
 	// * Running the TypeScript compiler on esbuild's output to convert ES6 to ES5
 	//   will also overwrite esbuild's helper functions because TypeScript doesn't

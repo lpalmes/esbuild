@@ -16,13 +16,13 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/evanw/esbuild/internal/cache"
-	"github.com/evanw/esbuild/internal/compat"
-	"github.com/evanw/esbuild/internal/config"
-	"github.com/evanw/esbuild/internal/fs"
-	"github.com/evanw/esbuild/internal/logger"
-	"github.com/evanw/esbuild/internal/resolver"
-	"github.com/evanw/esbuild/internal/test"
+	"github.com/lpalmes/esbuild/internal/cache"
+	"github.com/lpalmes/esbuild/internal/compat"
+	"github.com/lpalmes/esbuild/internal/config"
+	"github.com/lpalmes/esbuild/internal/fs"
+	"github.com/lpalmes/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/resolver"
+	"github.com/lpalmes/esbuild/internal/test"
 )
 
 func es(version int) compat.JSFeature {

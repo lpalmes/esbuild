@@ -4,9 +4,9 @@ import (
 	"math"
 	"sort"
 
-	"github.com/evanw/esbuild/internal/ast"
-	"github.com/evanw/esbuild/internal/compat"
-	"github.com/evanw/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/ast"
+	"github.com/lpalmes/esbuild/internal/compat"
+	"github.com/lpalmes/esbuild/internal/logger"
 )
 
 // Every module (i.e. file) is parsed into a separate AST data structure. For

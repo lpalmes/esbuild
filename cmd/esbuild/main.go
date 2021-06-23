@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evanw/esbuild/internal/api_helpers"
-	"github.com/evanw/esbuild/internal/logger"
-	"github.com/evanw/esbuild/pkg/cli"
+	"github.com/lpalmes/esbuild/internal/api_helpers"
+	"github.com/lpalmes/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/pkg/cli"
 )
 
 var helpText = func(colors logger.Colors) string {
@@ -30,7 +30,7 @@ var helpText = func(colors logger.Colors) string {
   ` + colors.Underline + `https://esbuild.github.io/` + colors.Reset + `
 
 ` + colors.Bold + `Repository:` + colors.Reset + `
-  ` + colors.Underline + `https://github.com/evanw/esbuild` + colors.Reset + `
+  ` + colors.Underline + `https://github.com/lpalmes/esbuild` + colors.Reset + `
 
 ` + colors.Bold + `Simple options:` + colors.Reset + `
   --bundle              Bundle all dependencies into the output files

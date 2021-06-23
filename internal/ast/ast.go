@@ -1,6 +1,6 @@
 package ast
 
-import "github.com/evanw/esbuild/internal/logger"
+import "github.com/lpalmes/esbuild/internal/logger"
 
 // This file contains data structures that are used with the AST packages for
 // both JavaScript and CSS. This helps the bundler treat both AST formats in

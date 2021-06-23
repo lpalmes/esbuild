@@ -3,9 +3,9 @@ package css_printer
 import (
 	"testing"
 
-	"github.com/evanw/esbuild/internal/css_parser"
-	"github.com/evanw/esbuild/internal/logger"
-	"github.com/evanw/esbuild/internal/test"
+	"github.com/lpalmes/esbuild/internal/css_parser"
+	"github.com/lpalmes/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/test"
 )
 
 func assertEqual(t *testing.T, a interface{}, b interface{}) {

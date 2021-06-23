@@ -8,15 +8,15 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/evanw/esbuild/internal/ast"
-	"github.com/evanw/esbuild/internal/compat"
-	"github.com/evanw/esbuild/internal/config"
-	"github.com/evanw/esbuild/internal/helpers"
-	"github.com/evanw/esbuild/internal/js_ast"
-	"github.com/evanw/esbuild/internal/js_lexer"
-	"github.com/evanw/esbuild/internal/logger"
-	"github.com/evanw/esbuild/internal/renamer"
-	"github.com/evanw/esbuild/internal/runtime"
+	"github.com/lpalmes/esbuild/internal/ast"
+	"github.com/lpalmes/esbuild/internal/compat"
+	"github.com/lpalmes/esbuild/internal/config"
+	"github.com/lpalmes/esbuild/internal/helpers"
+	"github.com/lpalmes/esbuild/internal/js_ast"
+	"github.com/lpalmes/esbuild/internal/js_lexer"
+	"github.com/lpalmes/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/renamer"
+	"github.com/lpalmes/esbuild/internal/runtime"
 )
 
 // This parser does two passes:
@@ -201,7 +201,7 @@ type parser struct {
 	//       console.log(ns.a, ns.b, c, d, e);
 	//   })(ns || (ns = {}));
 	//
-	// Relevant issue: https://github.com/evanw/esbuild/issues/1158
+	// Relevant issue: https://github.com/lpalmes/esbuild/issues/1158
 	hasNonLocalExportDeclareInsideNamespace bool
 
 	// This helps recognize the "await import()" pattern. When this is present,
@@ -325,6 +325,7 @@ type optionsThatSupportStructuralEquality struct {
 
 	// Byte-sized values go here (gathered together here to keep this object compact)
 	ts                      config.TSOptions
+	flow                    config.FlowOptions
 	mode                    config.Mode
 	platform                config.Platform
 	outputFormat            config.Format
@@ -350,6 +351,7 @@ func OptionsFromConfig(options *config.Options) Options {
 			unsupportedJSFeatures:   options.UnsupportedJSFeatures,
 			originalTargetEnv:       options.OriginalTargetEnv,
 			ts:                      options.TS,
+			flow:                    options.Flow,
 			mode:                    options.Mode,
 			platform:                options.Platform,
 			outputFormat:            options.OutputFormat,
@@ -485,6 +487,9 @@ type fnOrArrowDataParse struct {
 
 	// Allow TypeScript decorators in function arguments
 	allowTSDecorators bool
+
+	// for return types we check
+	isReturnType bool
 }
 
 // This is function-specific information used during visiting. It is saved and
@@ -1865,6 +1870,21 @@ func (p *parser) parseProperty(kind js_ast.PropertyKind, opts propertyOpts, erro
 			}
 		}
 
+		if p.options.flow.Parse && p.lexer.Token == js_lexer.TColon && wasIdentifier && opts.isClass {
+			if _, ok := expr.Data.(*js_ast.EIdentifier); ok {
+				// "[key: string]: any;"
+				p.lexer.Next()
+				p.skipFlowType(js_ast.LLowest)
+				p.lexer.Expect(js_lexer.TCloseBracket)
+				p.lexer.Expect(js_lexer.TColon)
+				p.skipFlowType(js_ast.LLowest)
+				p.lexer.ExpectOrInsertSemicolon()
+
+				// Skip this property entirely
+				return js_ast.Property{}, false
+			}
+		}
+
 		p.lexer.Expect(js_lexer.TCloseBracket)
 		key = expr
 
@@ -1877,6 +1897,12 @@ func (p *parser) parseProperty(kind js_ast.PropertyKind, opts propertyOpts, erro
 		return p.parseProperty(js_ast.PropertyNormal, opts, errors)
 
 	default:
+
+		// Readonly class property: +name: string
+		if p.options.flow.Parse && p.lexer.Token == js_lexer.TPlus {
+			p.lexer.Next()
+		}
+
 		name := p.lexer.Identifier
 		raw := p.lexer.Raw()
 		nameRange := p.lexer.Range()
@@ -1935,6 +1961,14 @@ func (p *parser) parseProperty(kind js_ast.PropertyKind, opts propertyOpts, erro
 						return js_ast.Property{}, false
 					}
 
+					if opts.isClass && p.options.flow.Parse && !opts.isTSDeclare && raw == name {
+						opts.isTSDeclare = true
+						scopeIndex := len(p.scopesInOrder)
+						p.parseProperty(kind, opts, nil)
+						p.discardScopesUpTo(scopeIndex)
+						return js_ast.Property{}, false
+					}
+
 				case "private", "protected", "public", "readonly", "abstract", "override":
 					// Skip over TypeScript keywords
 					if opts.isClass && p.options.ts.Parse && raw == name {
@@ -1986,6 +2020,18 @@ func (p *parser) parseProperty(kind js_ast.PropertyKind, opts propertyOpts, erro
 		p.skipTypeScriptTypeParameters()
 	}
 
+	if p.options.flow.Parse {
+		// "class X { foo?: number }"
+		// "class X { foo!: number }"
+		if opts.isClass && (p.lexer.Token == js_lexer.TQuestion || p.lexer.Token == js_lexer.TExclamation) {
+			p.lexer.Next()
+		}
+
+		// "class X { foo?<T>(): T }"
+		// "const x = { foo<T>(): T {} }"
+		p.skipFlowTypeParameters()
+	}
+
 	// Parse a class field with an optional initial value
 	if opts.isClass && kind == js_ast.PropertyNormal && !opts.isAsync &&
 		!opts.isGenerator && p.lexer.Token != js_lexer.TOpenParen {
@@ -2003,6 +2049,12 @@ func (p *parser) parseProperty(kind js_ast.PropertyKind, opts propertyOpts, erro
 		if p.options.ts.Parse && p.lexer.Token == js_lexer.TColon {
 			p.lexer.Next()
 			p.skipTypeScriptType(js_ast.LLowest)
+		}
+
+		// Skip over types
+		if p.options.flow.Parse && p.lexer.Token == js_lexer.TColon {
+			p.lexer.Next()
+			p.skipFlowType(js_ast.LLowest)
 		}
 
 		if p.lexer.Token == js_lexer.TEquals {
@@ -2095,7 +2147,7 @@ func (p *parser) parseProperty(kind js_ast.PropertyKind, opts propertyOpts, erro
 			isConstructor:      isConstructor,
 
 			// Only allow omitting the body if we're parsing TypeScript class
-			allowMissingBodyForTypeScript: p.options.ts.Parse && opts.isClass,
+			allowMissingBodyForTypeScript: (p.options.ts.Parse || p.options.flow.Parse) && opts.isClass,
 		})
 
 		// "class Foo { foo(): void; foo(): void {} }"
@@ -2407,6 +2459,10 @@ func (p *parser) parseAsyncPrefixExpr(asyncRange logger.Range, level js_ast.L, f
 				p.lexer.Next()
 				return p.parseParenExpr(asyncRange.Loc, level, parenExprOpts{isAsync: true, asyncRange: asyncRange})
 			}
+			if p.options.flow.Parse && p.trySkipFlowTypeParametersThenOpenParenWithBacktracking() {
+				p.lexer.Next()
+				return p.parseParenExpr(asyncRange.Loc, level, parenExprOpts{isAsync: true, asyncRange: asyncRange})
+			}
 		}
 	}
 
@@ -2444,6 +2500,10 @@ func (p *parser) parseFnExpr(loc logger.Loc, isAsync bool, asyncRange logger.Ran
 	// Even anonymous functions can have TypeScript type parameters
 	if p.options.ts.Parse {
 		p.skipTypeScriptTypeParameters()
+	}
+
+	if p.options.flow.Parse {
+		p.skipFlowTypeParameters()
 	}
 
 	await := allowIdent
@@ -2531,6 +2591,19 @@ func (p *parser) parseParenExpr(loc logger.Loc, level js_ast.L, opts parenExprOp
 			item = js_ast.Assign(item, p.parseExpr(js_ast.LComma))
 		}
 
+		// Skip over types
+		if p.options.flow.Parse && p.lexer.Token == js_lexer.TColon {
+			typeColonRange = p.lexer.Range()
+			p.lexer.Next()
+			p.skipFlowType(js_ast.LLowest)
+		}
+
+		// There may be a "=" after the type (but not after an "as" cast)
+		if p.options.flow.Parse && p.lexer.Token == js_lexer.TEquals && p.lexer.Loc() != p.forbidSuffixAfterAsLoc {
+			p.lexer.Next()
+			item = js_ast.Assign(item, p.parseExpr(js_ast.LComma))
+		}
+
 		items = append(items, item)
 		if p.lexer.Token != js_lexer.TComma {
 			break
@@ -2556,7 +2629,7 @@ func (p *parser) parseParenExpr(loc logger.Loc, level js_ast.L, opts parenExprOp
 	p.fnOrArrowDataParse = oldFnOrArrowData
 
 	// Are these arguments to an arrow function?
-	if p.lexer.Token == js_lexer.TEqualsGreaterThan || opts.forceArrowFn || (p.options.ts.Parse && p.lexer.Token == js_lexer.TColon) {
+	if p.lexer.Token == js_lexer.TEqualsGreaterThan || opts.forceArrowFn || ((p.options.ts.Parse || p.options.flow.Parse) && p.lexer.Token == js_lexer.TColon) {
 		// Arrow functions are not allowed inside certain expressions
 		if level > js_ast.LAssign {
 			p.lexer.Unexpected()
@@ -2586,8 +2659,10 @@ func (p *parser) parseParenExpr(loc logger.Loc, level js_ast.L, opts parenExprOp
 		// attempt to convert the expressions to bindings first before deciding
 		// whether this is an arrow function, and only pick an arrow function if
 		// there were no conversion errors.
-		if p.lexer.Token == js_lexer.TEqualsGreaterThan || (len(invalidLog.invalidTokens) == 0 &&
-			p.trySkipTypeScriptArrowReturnTypeWithBacktracking()) || opts.forceArrowFn {
+		if p.lexer.Token == js_lexer.TEqualsGreaterThan ||
+			(p.options.ts.Parse && len(invalidLog.invalidTokens) == 0 && p.trySkipTypeScriptArrowReturnTypeWithBacktracking()) ||
+			(p.options.flow.Parse && len(invalidLog.invalidTokens) == 0 && p.trySkipFlowArrowReturnTypeWithBacktracking()) ||
+			opts.forceArrowFn {
 			if commaAfterSpread.Start != 0 {
 				p.log.AddRangeError(&p.tracker, logger.Range{Loc: commaAfterSpread, Len: 1}, "Unexpected \",\" after rest pattern")
 			}
@@ -3087,6 +3162,9 @@ func (p *parser) parsePrefix(level js_ast.L, errors *deferredErrors, flags exprF
 		if p.options.ts.Parse {
 			p.skipTypeScriptTypeParameters()
 		}
+		if p.options.flow.Parse {
+			p.skipFlowTypeParameters()
+		}
 
 		class := p.parseClass(classKeyword, name, parseClassOpts{})
 
@@ -3120,6 +3198,18 @@ func (p *parser) parsePrefix(level js_ast.L, errors *deferredErrors, flags exprF
 			// Skip over TypeScript type arguments here if there are any
 			if p.lexer.Token == js_lexer.TLessThan {
 				p.trySkipTypeScriptTypeArgumentsWithBacktracking()
+			}
+		}
+
+		if p.options.flow.Parse {
+			// Skip over TypeScript non-null assertions
+			if p.lexer.Token == js_lexer.TExclamation && !p.lexer.HasNewlineBefore {
+				p.lexer.Next()
+			}
+
+			// Skip over TypeScript type arguments here if there are any
+			if p.lexer.Token == js_lexer.TLessThan {
+				p.trySkipFlowTypeArgumentsWithBacktracking()
 			}
 		}
 
@@ -3752,7 +3842,7 @@ func (p *parser) parseSuffix(left js_ast.Expr, level js_ast.L, errors *deferredE
 			// "(a?) => {}"
 			// "(a?: b) => {}"
 			// "(a?, b?) => {}"
-			if p.options.ts.Parse && left.Loc == p.latestArrowArgLoc && (p.lexer.Token == js_lexer.TColon ||
+			if (p.options.ts.Parse || p.options.flow.Parse) && left.Loc == p.latestArrowArgLoc && (p.lexer.Token == js_lexer.TColon ||
 				p.lexer.Token == js_lexer.TCloseParen || p.lexer.Token == js_lexer.TComma) {
 				if errors == nil {
 					p.lexer.Unexpected()
@@ -3925,6 +4015,11 @@ func (p *parser) parseSuffix(left js_ast.Expr, level js_ast.L, errors *deferredE
 			// inside an expression. Unlike in other languages, this unfortunately
 			// appears to require backtracking to parse.
 			if p.options.ts.Parse && p.trySkipTypeScriptTypeArgumentsWithBacktracking() {
+				optionalChain = oldOptionalChain
+				continue
+			}
+
+			if p.options.flow.Parse && p.trySkipFlowTypeArgumentsWithBacktracking() {
 				optionalChain = oldOptionalChain
 				continue
 			}
@@ -4310,6 +4405,13 @@ func (p *parser) parseJSXElement(loc logger.Loc) js_ast.Expr {
 		// like this: "<Foo<T> data-disabled/>"
 		p.skipTypeScriptTypeArguments(true /* isInsideJSXElement */)
 	}
+	if p.options.flow.Parse {
+		// Pass a flag to the type argument skipper because we need to call
+		// js_lexer.NextInsideJSXElement() after we hit the closing ">". The next
+		// token after the ">" might be an attribute name with a dash in it
+		// like this: "<Foo<T> data-disabled/>"
+		p.skipFlowTypeArguments(true /* isInsideJSXElement */)
+	}
 
 	// Parse attributes
 	var previousStringWithBackslashLoc logger.Loc
@@ -4568,6 +4670,13 @@ func (p *parser) parseAndDeclareDecls(kind js_ast.SymbolKind, opts parseStmtOpts
 				p.skipTypeScriptType(js_ast.LLowest)
 			}
 		}
+		if p.options.flow.Parse {
+			// "let foo: number"
+			if p.lexer.Token == js_lexer.TColon {
+				p.lexer.Expect(js_lexer.TColon)
+				p.skipFlowType(js_ast.LLowest)
+			}
+		}
 
 		if p.lexer.Token == js_lexer.TEquals {
 			p.lexer.Next()
@@ -4652,6 +4761,14 @@ func (p *parser) parseImportClause() ([]js_ast.ClauseItem, bool) {
 		name := js_ast.LocRef{Loc: aliasLoc, Ref: p.storeNameInRef(alias)}
 		originalName := alias
 		p.lexer.Next()
+
+		if p.options.flow.Parse && (originalName == "type" || originalName == "typeof") {
+			p.lexer.Next() // We parse the identifier
+			if p.lexer.Token == js_lexer.TComma {
+				p.lexer.Next() // And skip the next token if it's a comma
+			}
+			continue
+		}
 
 		if p.lexer.IsContextualKeyword("as") {
 			p.lexer.Next()
@@ -4988,6 +5105,19 @@ func (p *parser) parseFn(name *js_ast.LocRef, data fnOrArrowDataParse) (fn js_as
 			}
 		}
 
+		if p.options.flow.Parse {
+			//  "function foo(a?) {}"
+			if p.lexer.Token == js_lexer.TQuestion {
+				p.lexer.Next()
+			}
+
+			// "function foo(a: any) {}"
+			if p.lexer.Token == js_lexer.TColon {
+				p.lexer.Next()
+				p.skipFlowType(js_ast.LLowest)
+			}
+		}
+
 		p.declareBinding(js_ast.SymbolHoisted, arg, parseStmtOpts{})
 
 		var defaultValueOrNil js_ast.Expr
@@ -5034,10 +5164,16 @@ func (p *parser) parseFn(name *js_ast.LocRef, data fnOrArrowDataParse) (fn js_as
 	p.lexer.Expect(js_lexer.TCloseParen)
 	p.fnOrArrowDataParse = oldFnOrArrowData
 
-	// "function foo(): any {}"
+	// Typescript "function foo(): any {}"
 	if p.options.ts.Parse && p.lexer.Token == js_lexer.TColon {
 		p.lexer.Next()
 		p.skipTypeScriptReturnType()
+	}
+
+	// Flow "function foo(): any {}"
+	if p.options.flow.Parse && p.lexer.Token == js_lexer.TColon {
+		p.lexer.Next()
+		p.skipFlowReturnType()
 	}
 
 	// "function foo(): any;"
@@ -5089,7 +5225,10 @@ func (p *parser) parseClassStmt(loc logger.Loc, opts parseStmtOpts) js_ast.Stmt 
 		p.lexer.Expected(js_lexer.TClass)
 	}
 
-	if !opts.isNameOptional || (p.lexer.Token == js_lexer.TIdentifier && (!p.options.ts.Parse || p.lexer.Identifier != "implements")) {
+	if !opts.isNameOptional ||
+		(p.lexer.Token == js_lexer.TIdentifier &&
+			(!p.options.ts.Parse || p.lexer.Identifier != "implements") &&
+			(!p.options.flow.Parse || p.lexer.Identifier != "implements")) {
 		nameLoc := p.lexer.Loc()
 		nameText := p.lexer.Identifier
 		p.lexer.Expect(js_lexer.TIdentifier)
@@ -5105,6 +5244,10 @@ func (p *parser) parseClassStmt(loc logger.Loc, opts parseStmtOpts) js_ast.Stmt 
 	// Even anonymous classes can have TypeScript type parameters
 	if p.options.ts.Parse {
 		p.skipTypeScriptTypeParameters()
+	}
+
+	if p.options.flow.Parse {
+		p.skipFlowTypeParameters()
 	}
 
 	classOpts := parseClassOpts{
@@ -5156,12 +5299,26 @@ func (p *parser) parseClass(classKeyword logger.Range, name *js_ast.LocRef, clas
 		if p.options.ts.Parse {
 			p.skipTypeScriptTypeArguments(false /* isInsideJSXElement */)
 		}
+		if p.options.flow.Parse {
+			p.skipFlowTypeArguments(false /* isInsideJSXElement */)
+		}
 	}
 
 	if p.options.ts.Parse && p.lexer.IsContextualKeyword("implements") {
 		p.lexer.Next()
 		for {
 			p.skipTypeScriptType(js_ast.LLowest)
+			if p.lexer.Token != js_lexer.TComma {
+				break
+			}
+			p.lexer.Next()
+		}
+	}
+
+	if p.options.flow.Parse && p.lexer.IsContextualKeyword("implements") {
+		p.lexer.Next()
+		for {
+			p.skipFlowType(js_ast.LLowest)
 			if p.lexer.Token != js_lexer.TComma {
 				break
 			}
@@ -5366,6 +5523,10 @@ func (p *parser) parseFnStmt(loc logger.Loc, opts parseStmtOpts, isAsync bool, a
 		p.skipTypeScriptTypeParameters()
 	}
 
+	if p.options.flow.Parse {
+		p.skipFlowTypeParameters()
+	}
+
 	// Introduce a fake block scope for function declarations inside if statements
 	var ifStmtScopeIndex int
 	hasIfScope := opts.lexicalDecl == lexicalDeclAllowFnInsideIf
@@ -5392,7 +5553,7 @@ func (p *parser) parseFnStmt(loc logger.Loc, opts parseStmtOpts, isAsync bool, a
 		isTypeScriptDeclare: opts.isTypeScriptDeclare,
 
 		// Only allow omitting the body if we're parsing TypeScript
-		allowMissingBodyForTypeScript: p.options.ts.Parse,
+		allowMissingBodyForTypeScript: p.options.ts.Parse || p.options.flow.Parse,
 	})
 
 	// Don't output anything if it's just a forward declaration of a function
@@ -5462,6 +5623,7 @@ type parseStmtOpts struct {
 	isExport            bool
 	isNameOptional      bool // For "export default" pseudo-statements
 	isTypeScriptDeclare bool
+	isFlowDeclare       bool
 	isForLoopInit       bool
 	isForAwaitLoopInit  bool
 }
@@ -5503,6 +5665,11 @@ func (p *parser) parseStmt(opts parseStmtOpts) js_ast.Stmt {
 		case js_lexer.TImport:
 			// "export import foo = bar"
 			if p.options.ts.Parse && (opts.isModuleScope || opts.isNamespaceScope) {
+				opts.isExport = true
+				return p.parseStmt(opts)
+			}
+
+			if p.options.flow.Parse && (opts.isModuleScope || opts.isNamespaceScope) {
 				opts.isExport = true
 				return p.parseStmt(opts)
 			}
@@ -5571,6 +5738,41 @@ func (p *parser) parseStmt(opts parseStmtOpts) js_ast.Stmt {
 					opts.isExport = true
 					opts.lexicalDecl = lexicalDeclAllowAll
 					opts.isTypeScriptDeclare = true
+					return p.parseStmt(opts)
+				}
+			}
+
+			if p.options.flow.Parse {
+				switch p.lexer.Identifier {
+				case "opaque":
+					// export opaque type
+					p.lexer.Expect(js_lexer.TIdentifier)
+					fallthrough
+				case "type":
+					// "export type foo = ..."
+					typeRange := p.lexer.Range()
+					p.lexer.Next()
+					if p.lexer.HasNewlineBefore {
+						p.log.AddError(&p.tracker, logger.Loc{Start: typeRange.End()}, "Unexpected newline after \"type\"")
+						panic(js_lexer.LexerPanic{})
+					}
+					p.skipFlowTypeStmt(parseStmtOpts{isModuleScope: opts.isModuleScope, isExport: true})
+					return js_ast.Stmt{Loc: loc, Data: &js_ast.STypeScript{}}
+
+				case "namespace", "abstract", "module", "interface":
+					// "export namespace Foo {}"
+					// "export abstract class Foo {}"
+					// "export module Foo {}"
+					// "export interface Foo {}"
+					opts.isExport = true
+					return p.parseStmt(opts)
+
+				case "declare":
+					// "export declare class Foo {}"
+					opts.isExport = true
+					opts.lexicalDecl = lexicalDeclAllowAll
+					opts.isTypeScriptDeclare = true
+					opts.isFlowDeclare = true
 					return p.parseStmt(opts)
 				}
 			}
@@ -6001,6 +6203,11 @@ func (p *parser) parseStmt(opts parseStmtOpts) js_ast.Stmt {
 					p.skipTypeScriptType(js_ast.LLowest)
 				}
 
+				if p.options.flow.Parse && p.lexer.Token == js_lexer.TColon {
+					p.lexer.Expect(js_lexer.TColon)
+					p.skipFlowType(js_ast.LLowest)
+				}
+
 				p.lexer.Expect(js_lexer.TCloseParen)
 
 				// Bare identifiers are a special case
@@ -6224,7 +6431,7 @@ func (p *parser) parseStmt(opts parseStmtOpts) js_ast.Stmt {
 			stmt.IsSingleLine = isSingleLine
 			p.lexer.ExpectContextualKeyword("from")
 
-		case js_lexer.TIdentifier:
+		case js_lexer.TIdentifier, js_lexer.TTypeof:
 			// "import defaultItem from 'path'"
 			// "import foo = bar"
 			if !opts.isModuleScope && !opts.isNamespaceScope {
@@ -6235,6 +6442,43 @@ func (p *parser) parseStmt(opts parseStmtOpts) js_ast.Stmt {
 			defaultName := p.lexer.Identifier
 			stmt.DefaultName = &js_ast.LocRef{Loc: p.lexer.Loc(), Ref: p.storeNameInRef(defaultName)}
 			p.lexer.Next()
+
+			if p.options.flow.Parse {
+				// Skip over type-only imports
+				if defaultName == "type" || defaultName == "typeof" {
+					switch p.lexer.Token {
+					case js_lexer.TIdentifier:
+						if p.lexer.Identifier != "from" {
+							defaultName = p.lexer.Identifier
+							stmt.DefaultName.Loc = p.lexer.Loc()
+							p.lexer.Next()
+							// "import type foo from 'bar';"
+							p.lexer.ExpectContextualKeyword("from")
+							p.parsePath()
+							p.lexer.ExpectOrInsertSemicolon()
+							return js_ast.Stmt{Loc: loc, Data: &js_ast.STypeScript{}}
+						}
+
+					case js_lexer.TAsterisk:
+						// "import type * as foo from 'bar';"
+						p.lexer.Next()
+						p.lexer.ExpectContextualKeyword("as")
+						p.lexer.Expect(js_lexer.TIdentifier)
+						p.lexer.ExpectContextualKeyword("from")
+						p.parsePath()
+						p.lexer.ExpectOrInsertSemicolon()
+						return js_ast.Stmt{Loc: loc, Data: &js_ast.STypeScript{}}
+
+					case js_lexer.TOpenBrace:
+						// "import type {foo} from 'bar';"
+						p.parseImportClause()
+						p.lexer.ExpectContextualKeyword("from")
+						p.parsePath()
+						p.lexer.ExpectOrInsertSemicolon()
+						return js_ast.Stmt{Loc: loc, Data: &js_ast.STypeScript{}}
+					}
+				}
+			}
 
 			if p.options.ts.Parse {
 				// Skip over type-only imports
@@ -6446,6 +6690,21 @@ func (p *parser) parseStmt(opts parseStmtOpts) js_ast.Stmt {
 					return js_ast.Stmt{Loc: loc, Data: &js_ast.SLabel{Name: name, Stmt: stmt}}
 				}
 
+				if p.options.flow.Parse {
+					switch name {
+					case "type":
+						if p.lexer.Token == js_lexer.TIdentifier && !p.lexer.HasNewlineBefore {
+							// "type Foo = any"
+							p.skipFlowTypeStmt(parseStmtOpts{isModuleScope: opts.isModuleScope})
+							return js_ast.Stmt{Loc: loc, Data: &js_ast.STypeScript{}}
+						}
+					case "interface":
+						// "interface Foo {}"
+						p.skipFlowInterfaceStmt(parseStmtOpts{isModuleScope: opts.isModuleScope})
+						return js_ast.Stmt{Loc: loc, Data: &js_ast.STypeScript{}}
+					}
+				}
+
 				if p.options.ts.Parse {
 					switch name {
 					case "type":
@@ -6642,8 +6901,8 @@ func (p *parser) parseStmtsUpTo(end js_lexer.T, opts parseStmtOpts) []js_ast.Stm
 
 		stmt := p.parseStmt(opts)
 
-		// Skip TypeScript types entirely
-		if p.options.ts.Parse {
+		// Skip types entirely
+		if p.options.ts.Parse || p.options.flow.Parse {
 			if _, ok := stmt.Data.(*js_ast.STypeScript); ok {
 				continue
 			}
@@ -8540,7 +8799,7 @@ func (p *parser) visitAndAppendStmt(stmts []js_ast.Stmt, stmt js_ast.Stmt) []js_
 			s2.Value = p.maybeKeepExprSymbolName(s2.Value, "default", wasAnonymousNamedExpr)
 
 			// Discard type-only export default statements
-			if p.options.ts.Parse {
+			if p.options.ts.Parse || p.options.flow.Parse {
 				if id, ok := s2.Value.Data.(*js_ast.EIdentifier); ok {
 					symbol := p.symbols[id.Ref.InnerIndex]
 					if symbol.Kind == js_ast.SymbolUnbound && p.localTypeNames[symbol.OriginalName] {

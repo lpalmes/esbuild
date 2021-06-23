@@ -7,8 +7,8 @@ package bundler
 import (
 	"testing"
 
-	"github.com/evanw/esbuild/internal/compat"
-	"github.com/evanw/esbuild/internal/config"
+	"github.com/lpalmes/esbuild/internal/compat"
+	"github.com/lpalmes/esbuild/internal/config"
 )
 
 var lower_suite = suite{

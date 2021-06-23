@@ -3,7 +3,7 @@
 //
 // If you are just trying to run esbuild from Go without the overhead of
 // creating a child process, there is also an API for the command-line
-// interface itself: https://godoc.org/github.com/evanw/esbuild/pkg/cli.
+// interface itself: https://godoc.org/github.com/lpalmes/esbuild/pkg/cli.
 //
 // Build API
 //
@@ -19,7 +19,7 @@
 //     import (
 //         "os"
 //
-//         "github.com/evanw/esbuild/pkg/api"
+//         "github.com/lpalmes/esbuild/pkg/api"
 //     )
 //
 //     func main() {
@@ -51,7 +51,7 @@
 //         "fmt"
 //         "os"
 //
-//         "github.com/evanw/esbuild/pkg/api"
+//         "github.com/lpalmes/esbuild/pkg/api"
 //     )
 //
 //     func main() {
@@ -134,6 +134,7 @@ const (
 	LoaderJSX
 	LoaderTS
 	LoaderTSX
+	LoaderFlow
 	LoaderJSON
 	LoaderText
 	LoaderBase64

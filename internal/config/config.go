@@ -6,10 +6,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/evanw/esbuild/internal/ast"
-	"github.com/evanw/esbuild/internal/compat"
-	"github.com/evanw/esbuild/internal/js_ast"
-	"github.com/evanw/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/ast"
+	"github.com/lpalmes/esbuild/internal/compat"
+	"github.com/lpalmes/esbuild/internal/js_ast"
+	"github.com/lpalmes/esbuild/internal/logger"
 )
 
 type JSXOptions struct {
@@ -25,6 +25,10 @@ type JSXExpr struct {
 }
 
 type TSOptions struct {
+	Parse bool
+}
+
+type FlowOptions struct {
 	Parse bool
 }
 
@@ -79,6 +83,7 @@ const (
 	LoaderJSX
 	LoaderTS
 	LoaderTSX
+	LoaderFlow
 	LoaderJSON
 	LoaderText
 	LoaderBase64
@@ -219,6 +224,7 @@ type Options struct {
 
 	Defines  *ProcessedDefines
 	TS       TSOptions
+	Flow     FlowOptions
 	JSX      JSXOptions
 	Platform Platform
 

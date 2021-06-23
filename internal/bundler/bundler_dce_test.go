@@ -3,7 +3,7 @@ package bundler
 import (
 	"testing"
 
-	"github.com/evanw/esbuild/internal/config"
+	"github.com/lpalmes/esbuild/internal/config"
 )
 
 var dce_suite = suite{

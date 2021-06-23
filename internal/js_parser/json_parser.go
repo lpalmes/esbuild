@@ -3,10 +3,10 @@ package js_parser
 import (
 	"fmt"
 
-	"github.com/evanw/esbuild/internal/helpers"
-	"github.com/evanw/esbuild/internal/js_ast"
-	"github.com/evanw/esbuild/internal/js_lexer"
-	"github.com/evanw/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/helpers"
+	"github.com/lpalmes/esbuild/internal/js_ast"
+	"github.com/lpalmes/esbuild/internal/js_lexer"
+	"github.com/lpalmes/esbuild/internal/logger"
 )
 
 type jsonParser struct {

@@ -8,7 +8,7 @@ import (
 	"runtime/pprof"
 	"runtime/trace"
 
-	"github.com/evanw/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/logger"
 )
 
 func createTraceFile(osArgs []string, traceFile string) func() {

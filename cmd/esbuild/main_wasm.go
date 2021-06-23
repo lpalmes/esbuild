@@ -3,7 +3,7 @@
 package main
 
 import (
-	"github.com/evanw/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/logger"
 )
 
 // Remove this code from the WebAssembly binary to reduce size. This only removes 0.4mb of stuff.

@@ -6,7 +6,7 @@ package cli_helpers
 import (
 	"fmt"
 
-	"github.com/evanw/esbuild/pkg/api"
+	"github.com/lpalmes/esbuild/pkg/api"
 )
 
 func ParseLoader(text string) (api.Loader, error) {
@@ -19,6 +19,8 @@ func ParseLoader(text string) (api.Loader, error) {
 		return api.LoaderTS, nil
 	case "tsx":
 		return api.LoaderTSX, nil
+	case "flow":
+		return api.LoaderFlow, nil
 	case "css":
 		return api.LoaderCSS, nil
 	case "json":

@@ -3,7 +3,7 @@ package bundler
 import (
 	"testing"
 
-	"github.com/evanw/esbuild/internal/config"
+	"github.com/lpalmes/esbuild/internal/config"
 )
 
 var tsconfig_suite = suite{
@@ -380,7 +380,7 @@ Users/user/project/tsconfig.json: warning: Non-relative path "http://bad" is not
 	})
 }
 
-// https://github.com/evanw/esbuild/issues/913
+// https://github.com/lpalmes/esbuild/issues/913
 func TestTsConfigPathsOverriddenBaseURL(t *testing.T) {
 	tsconfig_suite.expectBundled(t, bundled{
 		files: map[string]string{

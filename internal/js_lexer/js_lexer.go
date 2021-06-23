@@ -20,8 +20,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/evanw/esbuild/internal/js_ast"
-	"github.com/evanw/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/js_ast"
+	"github.com/lpalmes/esbuild/internal/logger"
 )
 
 type T uint
@@ -302,6 +302,15 @@ func NewLexerJSON(log logger.Log, source logger.Source, allowComments bool) Lexe
 	lexer.step()
 	lexer.Next()
 	return lexer
+}
+
+func (lexer *Lexer) Log() {
+	fmt.Print("Current token " + tokenToString[lexer.Token])
+	if lexer.Token == TIdentifier {
+		fmt.Print(" Identifier: " + lexer.Identifier)
+	}
+	fmt.Print("\n")
+	fmt.Println(lexer.source.Contents[0:lexer.current])
 }
 
 func (lexer *Lexer) Loc() logger.Loc {

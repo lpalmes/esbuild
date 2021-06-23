@@ -5,9 +5,9 @@
 package js_parser
 
 import (
-	"github.com/evanw/esbuild/internal/js_ast"
-	"github.com/evanw/esbuild/internal/js_lexer"
-	"github.com/evanw/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/js_ast"
+	"github.com/lpalmes/esbuild/internal/js_lexer"
+	"github.com/lpalmes/esbuild/internal/logger"
 )
 
 func (p *parser) skipTypeScriptBinding() {
@@ -1029,7 +1029,7 @@ func (p *parser) parseTypeScriptNamespaceStmt(loc logger.Loc, opts parseStmtOpts
 	// TypeScript also strangely counts namespaces containing only
 	// "export declare" statements as non-empty even though "declare"
 	// statements are only type annotations. We cannot omit the namespace
-	// in that case. See https://github.com/evanw/esbuild/issues/1158.
+	// in that case. See https://github.com/lpalmes/esbuild/issues/1158.
 	if (len(stmts) == importEqualsCount && !hasNonLocalExportDeclareInsideNamespace) || opts.isTypeScriptDeclare {
 		p.popAndDiscardScope(scopeIndex)
 		if opts.isModuleScope {

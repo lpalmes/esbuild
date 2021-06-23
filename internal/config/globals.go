@@ -5,8 +5,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/evanw/esbuild/internal/js_ast"
-	"github.com/evanw/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/js_ast"
+	"github.com/lpalmes/esbuild/internal/logger"
 )
 
 var processedGlobalsMutex sync.Mutex

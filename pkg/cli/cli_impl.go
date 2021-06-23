@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/evanw/esbuild/internal/cli_helpers"
-	"github.com/evanw/esbuild/internal/fs"
-	"github.com/evanw/esbuild/internal/logger"
-	"github.com/evanw/esbuild/pkg/api"
+	"github.com/lpalmes/esbuild/internal/cli_helpers"
+	"github.com/lpalmes/esbuild/internal/fs"
+	"github.com/lpalmes/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/pkg/api"
 )
 
 func newBuildOptions() api.BuildOptions {

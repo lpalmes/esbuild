@@ -3,8 +3,8 @@ package css_lexer
 import (
 	"testing"
 
-	"github.com/evanw/esbuild/internal/logger"
-	"github.com/evanw/esbuild/internal/test"
+	"github.com/lpalmes/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/test"
 )
 
 func lexToken(contents string) (T, string) {

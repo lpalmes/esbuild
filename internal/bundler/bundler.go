@@ -13,22 +13,22 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/evanw/esbuild/internal/ast"
-	"github.com/evanw/esbuild/internal/cache"
-	"github.com/evanw/esbuild/internal/compat"
-	"github.com/evanw/esbuild/internal/config"
-	"github.com/evanw/esbuild/internal/css_parser"
-	"github.com/evanw/esbuild/internal/fs"
-	"github.com/evanw/esbuild/internal/graph"
-	"github.com/evanw/esbuild/internal/helpers"
-	"github.com/evanw/esbuild/internal/js_ast"
-	"github.com/evanw/esbuild/internal/js_lexer"
-	"github.com/evanw/esbuild/internal/js_parser"
-	"github.com/evanw/esbuild/internal/js_printer"
-	"github.com/evanw/esbuild/internal/logger"
-	"github.com/evanw/esbuild/internal/resolver"
-	"github.com/evanw/esbuild/internal/runtime"
-	"github.com/evanw/esbuild/internal/xxhash"
+	"github.com/lpalmes/esbuild/internal/ast"
+	"github.com/lpalmes/esbuild/internal/cache"
+	"github.com/lpalmes/esbuild/internal/compat"
+	"github.com/lpalmes/esbuild/internal/config"
+	"github.com/lpalmes/esbuild/internal/css_parser"
+	"github.com/lpalmes/esbuild/internal/fs"
+	"github.com/lpalmes/esbuild/internal/graph"
+	"github.com/lpalmes/esbuild/internal/helpers"
+	"github.com/lpalmes/esbuild/internal/js_ast"
+	"github.com/lpalmes/esbuild/internal/js_lexer"
+	"github.com/lpalmes/esbuild/internal/js_parser"
+	"github.com/lpalmes/esbuild/internal/js_printer"
+	"github.com/lpalmes/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/internal/resolver"
+	"github.com/lpalmes/esbuild/internal/runtime"
+	"github.com/lpalmes/esbuild/internal/xxhash"
 )
 
 type scannerFile struct {
@@ -181,6 +181,13 @@ func parseFile(args parseArgs) {
 
 	case config.LoaderTSX:
 		args.options.TS.Parse = true
+		args.options.JSX.Parse = true
+		ast, ok := args.caches.JSCache.Parse(args.log, source, js_parser.OptionsFromConfig(&args.options))
+		result.file.inputFile.Repr = &graph.JSRepr{AST: ast}
+		result.ok = ok
+
+	case config.LoaderFlow:
+		args.options.Flow.Parse = true
 		args.options.JSX.Parse = true
 		ast, ok := args.caches.JSCache.Parse(args.log, source, js_parser.OptionsFromConfig(&args.options))
 		result.file.inputFile.Repr = &graph.JSRepr{AST: ast}

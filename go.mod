@@ -1,4 +1,4 @@
-module github.com/evanw/esbuild
+module github.com/lpalmes/esbuild
 
 go 1.13
 

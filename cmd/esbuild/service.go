@@ -16,12 +16,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/evanw/esbuild/internal/cli_helpers"
-	"github.com/evanw/esbuild/internal/config"
-	"github.com/evanw/esbuild/internal/fs"
-	"github.com/evanw/esbuild/internal/logger"
-	"github.com/evanw/esbuild/pkg/api"
-	"github.com/evanw/esbuild/pkg/cli"
+	"github.com/lpalmes/esbuild/internal/cli_helpers"
+	"github.com/lpalmes/esbuild/internal/config"
+	"github.com/lpalmes/esbuild/internal/fs"
+	"github.com/lpalmes/esbuild/internal/logger"
+	"github.com/lpalmes/esbuild/pkg/api"
+	"github.com/lpalmes/esbuild/pkg/cli"
 )
 
 type responseCallback = func(interface{})
