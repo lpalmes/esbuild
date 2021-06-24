@@ -1,4 +1,4 @@
-// This file contains code for parsing Flow syntax. The parser just skips
+//const sum = (a, b) => a + b;\n This file contains code for parsing Flow syntax. The parser just skips
 // over type expressions as if they are whitespace and doesn't bother generating
 // an AST because nothing uses type information.
 
@@ -150,6 +150,11 @@ func (p *parser) skipFlowTypeWithOpts(level js_ast.L, opts skipTypeOpts) {
 		case js_lexer.TQuestion:
 			p.lexer.Next()
 			continue
+
+			// Infer type notation: function foo(): Array<*>
+		case js_lexer.TAsterisk:
+			p.lexer.Next()
+			return
 
 		case js_lexer.TNumericLiteral, js_lexer.TBigIntegerLiteral, js_lexer.TStringLiteral,
 			js_lexer.TNoSubstitutionTemplateLiteral, js_lexer.TTrue, js_lexer.TFalse,
@@ -424,7 +429,9 @@ func (p *parser) skipFlowObjectType() {
 		// Spread type into another object {| ...AnotherObject |}
 		if p.lexer.Token == js_lexer.TDotDotDot {
 			p.lexer.Next()
-			p.lexer.Expect(js_lexer.TIdentifier)
+			if p.lexer.Token == js_lexer.TIdentifier {
+				p.lexer.Next()
+			}
 
 			switch p.lexer.Token {
 			case js_lexer.TCloseBrace:
@@ -540,6 +547,12 @@ func (p *parser) skipFlowTypeParameters() {
 
 		for {
 			p.lexer.Expect(js_lexer.TIdentifier)
+
+			// "class Foo<T: AnotherType> {}"
+			if p.lexer.Token == js_lexer.TColon {
+				p.lexer.Next()
+				p.skipFlowType(js_ast.LLowest)
+			}
 
 			// "class Foo<T extends number> {}"
 			if p.lexer.Token == js_lexer.TExtends {

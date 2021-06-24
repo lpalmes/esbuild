@@ -1899,7 +1899,8 @@ func (p *parser) parseProperty(kind js_ast.PropertyKind, opts propertyOpts, erro
 	default:
 
 		// Readonly class property: +name: string
-		if p.options.flow.Parse && p.lexer.Token == js_lexer.TPlus {
+		// or: "-name: string"
+		if p.options.flow.Parse && p.lexer.Token == js_lexer.TPlus || p.lexer.Token == js_lexer.TMinus {
 			p.lexer.Next()
 		}
 
@@ -2703,8 +2704,8 @@ func (p *parser) parseParenExpr(loc logger.Loc, level js_ast.L, opts parenExprOp
 	// parent scope as if the scope was never pushed in the first place.
 	p.popAndFlattenScope(scopeIndex)
 
-	// If this isn't an arrow function, then types aren't allowed
-	if typeColonRange.Len > 0 {
+	// If this isn't an arrow function, then types aren't allowed in TypeScript
+	if p.options.flow.Parse == false && typeColonRange.Len > 0 {
 		p.log.AddRangeError(&p.tracker, typeColonRange, "Unexpected \":\"")
 		panic(js_lexer.LexerPanic{})
 	}
@@ -3428,6 +3429,16 @@ func (p *parser) parsePrefix(level js_ast.L, errors *deferredErrors, flags exprF
 			return element
 		}
 
+		if p.options.flow.Parse {
+			// This is either an old-style type cast or a generic lambda function
+
+			// "<T>(x)"
+			// "<T>(x) => {}"
+			p.trySkipFlowTypeParametersThenOpenParenWithBacktracking()
+			p.lexer.Expect(js_lexer.TOpenParen)
+			return p.parseParenExpr(loc, level, parenExprOpts{})
+		}
+
 		if p.options.ts.Parse {
 			// This is either an old-style type cast or a generic lambda function
 
@@ -3618,6 +3629,13 @@ func (p *parser) parseSuffix(left js_ast.Expr, level js_ast.L, errors *deferredE
 				}
 			}
 		}
+
+		// // If we are in Flow stop reading after : since it's a type
+		// if p.options.flow.Parse && p.lexer.Token == js_lexer.TColon {
+		// 	p.lexer.Next()
+		// 	p.skipFlowType(js_ast.LLowest)
+		// 	return left
+		// }
 
 		// Stop now if this token is forbidden to follow a TypeScript "as" cast
 		if p.lexer.Loc() == p.forbidSuffixAfterAsLoc {
@@ -6452,6 +6470,12 @@ func (p *parser) parseStmt(opts parseStmtOpts) js_ast.Stmt {
 							defaultName = p.lexer.Identifier
 							stmt.DefaultName.Loc = p.lexer.Loc()
 							p.lexer.Next()
+
+							if p.lexer.Token == js_lexer.TComma {
+								// "import type foo, { bar } from 'bar';"
+								p.lexer.Next()
+								p.parseImportClause()
+							}
 							// "import type foo from 'bar';"
 							p.lexer.ExpectContextualKeyword("from")
 							p.parsePath()
@@ -6701,6 +6725,68 @@ func (p *parser) parseStmt(opts parseStmtOpts) js_ast.Stmt {
 					case "interface":
 						// "interface Foo {}"
 						p.skipFlowInterfaceStmt(parseStmtOpts{isModuleScope: opts.isModuleScope})
+						return js_ast.Stmt{Loc: loc, Data: &js_ast.STypeScript{}}
+					case "declare":
+						opts.lexicalDecl = lexicalDeclAllowAll
+						opts.isTypeScriptDeclare = true
+
+						// "@decorator declare class Foo {}"
+						// "@decorator declare abstract class Foo {}"
+						if opts.tsDecorators != nil && p.lexer.Token != js_lexer.TClass && !p.lexer.IsContextualKeyword("abstract") {
+							p.lexer.Expected(js_lexer.TClass)
+						}
+
+						// "declare global { ... }"
+						if p.lexer.IsContextualKeyword("global") {
+							p.lexer.Next()
+							p.lexer.Expect(js_lexer.TOpenBrace)
+							p.parseStmtsUpTo(js_lexer.TCloseBrace, opts)
+							p.lexer.Next()
+							return js_ast.Stmt{Loc: loc, Data: &js_ast.STypeScript{}}
+						}
+
+						// "declare const x: any"
+						stmt := p.parseStmt(opts)
+						if opts.tsDecorators != nil {
+							p.discardScopesUpTo(opts.tsDecorators.scopeIndex)
+						}
+
+						// Unlike almost all uses of "declare", statements that use
+						// "export declare" with "var/let/const" inside a namespace affect
+						// code generation. They cause any declared bindings to be
+						// considered exports of the namespace. Identifier references to
+						// those names must be converted into property accesses off the
+						// namespace object:
+						//
+						//   namespace ns {
+						//     export declare const x
+						//     export function y() { return x }
+						//   }
+						//
+						//   (ns as any).x = 1
+						//   console.log(ns.y())
+						//
+						// In this example, "return x" must be replaced with "return ns.x".
+						// This is handled by replacing each "export declare" statement
+						// inside a namespace with an "export var" statement containing all
+						// of the declared bindings. That "export var" statement will later
+						// cause identifiers to be transformed into property accesses.
+						if opts.isNamespaceScope && opts.isExport {
+							var decls []js_ast.Decl
+							if s, ok := stmt.Data.(*js_ast.SLocal); ok {
+								for _, decl := range s.Decls {
+									decls = extractDeclsForBinding(decl.Binding, decls)
+								}
+							}
+							if len(decls) > 0 {
+								return js_ast.Stmt{Loc: loc, Data: &js_ast.SLocal{
+									Kind:     js_ast.LocalVar,
+									IsExport: true,
+									Decls:    decls,
+								}}
+							}
+						}
+
 						return js_ast.Stmt{Loc: loc, Data: &js_ast.STypeScript{}}
 					}
 				}
