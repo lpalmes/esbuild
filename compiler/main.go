@@ -24,7 +24,7 @@ func main() {
 		},
 		Write:    true,
 		LogLevel: api.LogLevelError,
-		LogLimit: 1,
+		LogLimit: 10,
 	})
 
 	if len(result.Errors) > 0 {

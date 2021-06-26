@@ -66,26 +66,36 @@ func TestBasicsFlowTypes(t *testing.T) {
 	expectPrintedFlow(t, "const sum = <R: {}>(v: R) => 42\n", "const sum = (v) => 42;\n")
 	expectPrintedFlow(t, "const sum = (): Promise<T | string> => 42\n", "const sum = () => 42;\n")
 	expectPrintedFlow(t, "(condition ? true : false)", "condition ? true : false;\n")
+	expectPrintedFlow(t,
+		"export const something = <Config: OperationType>(report: R, namespace = 'ttft', metadata): R => { }",
+		"export const something = (report, namespace = \"ttft\", metadata) => {\n};\n")
+	expectPrintedFlow(t, "const fun = (e: Some<>) => {}", "const fun = (e) => {\n};\n")
+	expectPrintedFlow(t,
+		`type Props = {|
+	...$Exact<RNW$TextProps>,
+	className?: string,
+	|};
+	`, "")
 }
 
 func TestBabelFlowTypes(t *testing.T) {
 
-	// 	// anonymous-function-no-parens-types
-	// expectPrintedFlow(t, "type A = string => void\n", "")
-	// expectPrintedFlow(t, "type A = Array<string> => void\n", "")
+	// anonymous-function-no-parens-types
+	expectPrintedFlow(t, "type A = string => void\n", "")
+	expectPrintedFlow(t, "type A = Array<string> => void\n", "")
 	expectPrintedFlow(t, "var f = (): number => 123;\n", "var f = () => 123;\n")
 	expectPrintedFlow(t, "var f = (): string | number => 123;\n", "var f = () => 123;\n")
 	// expectPrintedFlow(t, "var f = (x): (number => 123) => 123;\n", "var f = (x) => 123;\n")
-	// expectPrintedFlow(t, "type A = string | number => boolean;\n", "")
-	// expectPrintedFlow(t, "type A = ?number => boolean;\n", "")
-	// expectPrintedFlow(t, "type A = string & number => boolean;\n", "")
-	// expectPrintedFlow(t, "type A = number[] => boolean;\n", "")
-	// expectPrintedFlow(t, "type A = string => boolean | number;\n", "")
-	// expectPrintedFlow(t, "type A = (string => boolean) => number\n", "")
-	// expectPrintedFlow(t, "const x = ():*=>{}\n", "const x = () => {\n};\n")
-	// expectPrintedFlow(t, "type T = Array<(string) => number>", "")
-	// expectPrintedFlow(t, "type A = string => boolean => number;\n", "")
-	// expectPrintedFlow(t, "let x = (): Array<(string) => number> => []", "let x = () => [];\n")
+	expectPrintedFlow(t, "type A = string | number => boolean;\n", "")
+	expectPrintedFlow(t, "type A = ?number => boolean;\n", "")
+	expectPrintedFlow(t, "type A = string & number => boolean;\n", "")
+	expectPrintedFlow(t, "type A = number[] => boolean;\n", "")
+	expectPrintedFlow(t, "type A = string => boolean | number;\n", "")
+	expectPrintedFlow(t, "type A = (string => boolean) => number\n", "")
+	expectPrintedFlow(t, "const x = ():*=>{}\n", "const x = () => {\n};\n")
+	expectPrintedFlow(t, "type T = Array<(string) => number>", "")
+	expectPrintedFlow(t, "type A = string => boolean => number;\n", "")
+	expectPrintedFlow(t, "let x = (): Array<(string) => number> => []", "let x = () => [];\n")
 
 	// bounded-polymorphism
 	expectPrintedFlow(t, "function bar<T: ?number>() {}", "function bar() {\n}\n")
@@ -94,7 +104,7 @@ func TestBabelFlowTypes(t *testing.T) {
 	// anonymous-function-types
 	expectPrintedFlow(t, "declare function foo(x: number, string): void;\n", "")
 	expectPrintedFlow(t, "type A = (string) => void\n", "")
-	// expectPrintedFlow(t, "type A = (Array<string>) => void\n", "")
+	expectPrintedFlow(t, "type A = (Array<string>) => void\n", "")
 	expectPrintedFlow(t, "// TODO: declare export syntax\n// declare export function foo(x: number, string): void;\n", "")
 	expectPrintedFlow(t, "type A = (string,) => void\n", "")
 	// expectPrintedFlow(t, "type A = (Array<string>,) => void\n", "")
@@ -138,8 +148,8 @@ func TestBabelFlowTypes(t *testing.T) {
 	expectPrintedFlow(t, "interface A { (): number; }", "")
 	expectPrintedFlow(t, "var a : { (): number; y: string; (x: string): string }", "var a;\n")
 
-	// 	// classes
-	// 	expectPrintedFlow(t, "class C { field:*=null }\n", "class C {\n  field = null;\n}\n")
+	// classes
+	// expectPrintedFlow(t, "class C { field:*=null }\n", "class C {\n  field = null;\n}\n")
 	expectPrintedFlow(t, "class A implements B {}\n", "class A {\n}\n")
 	expectPrintedFlow(t, "class A implements B, C {}\n", "class A {\n}\n")
 	expectPrintedFlow(t, "class A {\n  constructor(): Object {\n    return {};\n  }\n}\n", "class A {\n  constructor() {\n    return {};\n  }\n}\n")
@@ -206,7 +216,7 @@ func TestBabelFlowTypes(t *testing.T) {
 	// def-site-variance
 	// expectPrintedFlow(t, "class C<+T,-U> {}\nfunction f<+T,-U>() {}\ntype T<+T,-U> = {}\n", "class C {\n}\nfunction f() {\n}\n")
 
-	// 	// declare-statements
+	// declare-statements
 	expectPrintedFlow(t, "declare class A { static foo(): number; static x : string }", "")
 	expectPrintedFlow(t, "declare class A { static () : number }", "")
 	expectPrintedFlow(t, "declare class A { static [ indexer: number]: string }", "")
@@ -228,7 +238,7 @@ func TestBabelFlowTypes(t *testing.T) {
 	expectPrintedFlow(t, "declare class A<T> extends B<T> { x: number }", "")
 	expectPrintedFlow(t, "declare var x: symbol;\n", "")
 
-	// 	// explicit-inexact-object
+	// explicit-inexact-object
 	expectPrintedFlow(t, "//@flow\ntype T = {...};\ntype U = {x: number, ...};\ntype V = {x: number, ...V, ...U};\n", "")
 	expectPrintedFlow(t, "//@flow\ntype T = { ..., };\ntype U = { ...; };\ntype V = {\n  x: number,\n  ...,\n};\ntype W = {\n  x: number;\n  ...;\n};\n", "")
 
@@ -305,12 +315,12 @@ func TestBabelFlowTypes(t *testing.T) {
 	// 	expectPrintedFlow(t, "export opaque type ID = number;\n", "")
 	// 	expectPrintedFlow(t, "opaque type switch = number;\n", "")
 
-	// 	// pragma
+	// pragma
 	// expectPrintedFlow(t, "foo<x>(y);\n// @flow\nfoo<x>(y);", "foo < x > y;\nfoo < x > y;\n")
 	// 	expectPrintedFlow(t, "'use strict';\n// @flow\nfoo<x>(y);", "\"use strict\";\nfoo(y);\n")
 	// 	expectPrintedFlow(t, "// arbitrary comment\n// @flow\nfoo<x>(y);", "foo(y);\n")
 	// 	expectPrintedFlow(t, "'use strict';\n// arbitrary comment\n// @flow\nfoo<x>(y);", "\"use strict\";\nfoo(y);\n")
-	// 	expectPrintedFlow(t, "#!/usr/bin/env node\n'use strict';\n// arbitrary comment\n// @flow\nfoo<x>(y);", "#!/usr/bin/env node\n\"use strict\";\nfoo(y);\n")
+	// expectPrintedFlow(t, "#!/usr/bin/env node\n'use strict';\n// arbitrary comment\n// @flow\nfoo<x>(y);", "#!/usr/bin/env node\n\"use strict\";\nfoo(y);\n")
 
 	// optional-type
 	expectPrintedFlow(t, "type State = ?LocalId;", "")
@@ -390,7 +400,7 @@ func TestBabelFlowTypes(t *testing.T) {
 	expectPrintedFlow(t, "type FBID = number;", "")
 	expectPrintedFlow(t, "type Foo<T> = Bar<T>", "")
 	expectPrintedFlow(t, "export type Foo = number;", "")
-	// expectPrintedFlow(t, "type a = ??string;", "")
+	expectPrintedFlow(t, "type a = ??string;", "")
 	expectPrintedFlow(t, "type A = Foo<\n  | {type: \"A\"}\n  | {type: \"B\"}\n>;\n\ntype B = Foo<\n  & {type: \"A\"}\n  & {type: \"B\"}\n>;\n", "")
 	expectPrintedFlow(t, "type union =\n | {type: \"A\"}\n | {type: \"B\"}\n;\n\ntype overloads =\n  & ((x: string) => number)\n  & ((x: number) => string)\n;\n\ntype union2 = {\n  x:\n    | {type: \"A\"}\n    | {type: \"B\"}\n};\n\ntype overloads2 = {\n  x:\n    & {type: \"A\"}\n    & {type: \"B\"}\n};\n", "")
 
@@ -399,7 +409,7 @@ func TestBabelFlowTypes(t *testing.T) {
 	expectPrintedFlow(t, "const identity = <T>(t: T): T => t;\nconst a = 1;\n", "const identity = (t) => t;\nconst a = 1;\n")
 	expectPrintedFlow(t, "async <T>(fn: () => T) => fn;", "async (fn) => fn;\n")
 	expectPrintedFlow(t, "const f = async <T, R, S>(\n  x: T,\n  y: R,\n  z: S,\n) => {\n  return null;\n};\n", "const f = async (x, y, z) => {\n  return null;\n};\n")
-	// 	expectPrintedFlow(t, "async <T>(fn: () => T);\n\n// This looks A LOT like an async arrow function, but it isn't because\n// T + U isn't a valid type parameter.\n(async <T + U>(fn: T): T => fn);\n", "async < T > fn;\nasync < T + U > fn;\n")
+	//expectPrintedFlow(t, "async <T>(fn: () => T);\n\n// This looks A LOT like an async arrow function, but it isn't because\n// T + U isn't a valid type parameter.\n(async <T + U>(fn: T): T => fn);\n", "async < T > fn;\nasync < T + U > fn;\n")
 	expectPrintedFlow(t, "async (...args?: any) => {};", "async (...args) => {\n};\n")
 	expectPrintedFlow(t, "async (...args: any) => {};", "async (...args) => {\n};\n")
 	// expectPrintedFlow(t, "let child: Element<any> = <img src={url} key=\"img\" />;\n", "let child = /* @__PURE__ */ React.createElement(\"img\", {\n  src: url,\n  key: \"img\"\n});\n")
@@ -412,7 +422,7 @@ func TestBabelFlowTypes(t *testing.T) {
 
 	// type-imports
 	expectPrintedFlow(t, "import type Def1 from \"foo\";\nimport type {named1} from \"foo\";\nimport type Def2, {named2} from \"foo\";\nimport type switch1 from \"foo\";\nimport type { switch2 } from \"foo\";\nimport type { foo1, bar1 } from \"baz\";\nimport type from \"foo\";\nimport typeof foo3 from \"bar\";\nimport typeof switch4 from \"foo\";\nimport typeof { switch5 } from \"foo\";\nimport typeof { foo as bar6 } from \"baz\";\nimport typeof * as ns7 from \"foo\";\nimport typeof * as switch8 from \"foo\";\n", "import type from \"foo\";\n")
-	// expectPrintedFlow(t, "import type, { foo } from \"bar\";\n", "import type, {foo} from \"bar\";\n")
+	expectPrintedFlow(t, "import type, { foo } from \"bar\";\n", "import type, { foo } from \"bar\";\n")
 	// expectPrintedFlow(t, "import {type} from \"foo\";\nimport {type t} from \"foo\";\nimport {type as} from \"foo\";\nimport {type as as foo} from \"foo\";\nimport {type t as u} from \"foo\";\nimport {type switch} from \"foo\";\n\nimport {typeof t2} from \"foo\";\nimport {typeof as2} from \"foo\";\nimport {typeof t as u2} from \"foo\";\nimport {typeof switch2} from \"foo\";\n", "import {type} from \"foo\";\n")
 
 	// type-parameter-declaration
@@ -861,45 +871,45 @@ func TestFlowTypes(t *testing.T) {
 	expectPrintedFlow(t, "let x = (): Array<(string) => number> => []\n", "let x = () => [];\n")
 	expectPrintedFlow(t, "type A = (string) => void\n", "")
 	expectPrintedFlow(t, "type A = (string,) => void\n", "")
-	// expectPrintedFlow(t, "type A = (Array<string>) => void\n", "")
+	expectPrintedFlow(t, "type A = (Array<string>) => void\n", "")
 	// expectPrintedFlow(t, "type A = (Array<string>,) => void\n", "")
 	expectPrintedFlow(t, "type A = (x: string, number) => void\n", "")
 	// expectPrintedFlow(t, "type A = (...Array<string>) => void\n", "")
 	// expectPrintedFlow(t, "type A = (Array<string>, ...Array<string>) => void\n", "")
 	// Non-anonymous function types are allowed as arrow function return types
 	expectPrintedFlow(t, "var f = (x): (x: number) => 123 => 123;\n", "var f = (x) => 123;\n")
-	///// Anonymous function types are disallowed as arrow function return types
+	// Anonymous function types are disallowed as arrow function return types
 	// So the `=>` clearly belongs to the arrow function
 	// expectPrintedFlow(t, "var f = (): (number) => 123;\n", "var f = () => 123;\n")
 	// expectPrintedFlow(t, "var f = (): string | (number) => 123;\n", "var f = () => 123;\n")
 	// You can write anonymous function types as arrow function return types
 	// if you wrap them in parens
 	expectPrintedFlow(t, "var f = (x): ((number) => 123) => 123;\n", "var f = (x) => 123;\n")
-	// expectPrintedFlow(t, "type A = string => void\n", "")
-	// expectPrintedFlow(t, "type A = Array<string> => void\n", "")
+	expectPrintedFlow(t, "type A = string => void\n", "")
+	expectPrintedFlow(t, "type A = Array<string> => void\n", "")
 	// Anonymous function types are disallowed as arrow function return types
-	// // So the `=>` clearly belongs to the arrow function
-	// expectPrintedFlow(t, "var f = (): number => 123;\n", "var f = () => 123;\n")
-	// // Anonymous function types are disallowed as arrow function return types
-	// // So the `=>` clearly belongs to the arrow function
-	// expectPrintedFlow(t, "var f = (): string | number => 123;\n", "var f = () => 123;\n")
-	// // You can write anonymous function types as arrow function return types
-	// // if you wrap them in parens
+	// So the `=>` clearly belongs to the arrow function
+	expectPrintedFlow(t, "var f = (): number => 123;\n", "var f = () => 123;\n")
+	// Anonymous function types are disallowed as arrow function return types
+	// So the `=>` clearly belongs to the arrow function
+	expectPrintedFlow(t, "var f = (): string | number => 123;\n", "var f = () => 123;\n")
+	// You can write anonymous function types as arrow function return types
+	// if you wrap them in parens
 	// expectPrintedFlow(t, "var f = (x): (number => 123) => 123;\n", "var f = (x) => 123;\n")
-	// // string | (number => boolean)
-	// expectPrintedFlow(t, "type A = string | number => boolean;\n", "")
-	// // string & (number => boolean)
-	// expectPrintedFlow(t, "type A = string & number => boolean;\n", "")
-	// // (?number) => boolean
-	// expectPrintedFlow(t, "type A = ?number => boolean;\n", "")
-	// // (number[]) => boolean
-	// expectPrintedFlow(t, "type A = number[] => boolean;\n", "")
-	// expectPrintedFlow(t, "type A = (string => boolean) => number\n", "")
-	// // string => (boolean | number)
-	// expectPrintedFlow(t, "type A = string => boolean | number;\n", "")
-	// // Becomes string => (boolean => number)
-	// expectPrintedFlow(t, "type A = string => boolean => number;\n", "")
-	// expectPrintedFlow(t, "type T = (arg: string, number) => void\n", "")
+	// string | (number => boolean)
+	expectPrintedFlow(t, "type A = string | number => boolean;\n", "")
+	// string & (number => boolean)
+	expectPrintedFlow(t, "type A = string & number => boolean;\n", "")
+	// (?number) => boolean
+	expectPrintedFlow(t, "type A = ?number => boolean;\n", "")
+	// (number[]) => boolean
+	expectPrintedFlow(t, "type A = number[] => boolean;\n", "")
+	expectPrintedFlow(t, "type A = (string => boolean) => number\n", "")
+	// string => (boolean | number)
+	expectPrintedFlow(t, "type A = string => boolean | number;\n", "")
+	// Becomes string => (boolean => number)
+	expectPrintedFlow(t, "type A = string => boolean => number;\n", "")
+	expectPrintedFlow(t, "type T = (arg: string, number) => void\n", "")
 
 	// member
 	expectPrintedFlow(t, "var a : A.B\n", "var a;\n")

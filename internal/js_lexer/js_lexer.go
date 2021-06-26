@@ -15,6 +15,7 @@ package js_lexer
 
 import (
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"unicode"
@@ -304,13 +305,20 @@ func NewLexerJSON(log logger.Log, source logger.Source, allowComments bool) Lexe
 	return lexer
 }
 
+func (lexer *Lexer) Stack() {
+	debug.PrintStack()
+}
+
 func (lexer *Lexer) Log() {
 	fmt.Print("Current token " + tokenToString[lexer.Token])
 	if lexer.Token == TIdentifier {
 		fmt.Print(" Identifier: " + lexer.Identifier)
 	}
 	fmt.Print("\n")
-	fmt.Println(lexer.source.Contents[0:lexer.current])
+	DebugColor := "\033[1;33m%s\033[0m"
+	contents := lexer.source.Contents
+	cursor := fmt.Sprintf(DebugColor, contents[lexer.start:lexer.end])
+	fmt.Println(contents[0:lexer.start] + cursor + contents[lexer.end:])
 }
 
 func (lexer *Lexer) Loc() logger.Loc {

@@ -2600,7 +2600,7 @@ func (p *parser) parseParenExpr(loc logger.Loc, level js_ast.L, opts parenExprOp
 		}
 
 		// There may be a "=" after the type (but not after an "as" cast)
-		if p.options.flow.Parse && p.lexer.Token == js_lexer.TEquals && p.lexer.Loc() != p.forbidSuffixAfterAsLoc {
+		if p.options.flow.Parse && p.lexer.Token == js_lexer.TEquals {
 			p.lexer.Next()
 			item = js_ast.Assign(item, p.parseExpr(js_ast.LComma))
 		}
@@ -3203,11 +3203,6 @@ func (p *parser) parsePrefix(level js_ast.L, errors *deferredErrors, flags exprF
 		}
 
 		if p.options.flow.Parse {
-			// Skip over TypeScript non-null assertions
-			if p.lexer.Token == js_lexer.TExclamation && !p.lexer.HasNewlineBefore {
-				p.lexer.Next()
-			}
-
 			// Skip over TypeScript type arguments here if there are any
 			if p.lexer.Token == js_lexer.TLessThan {
 				p.trySkipFlowTypeArgumentsWithBacktracking()
@@ -3613,6 +3608,14 @@ func (p *parser) parseExprCommon(level js_ast.L, errors *deferredErrors, flags e
 func (p *parser) parseSuffix(left js_ast.Expr, level js_ast.L, errors *deferredErrors, flags exprFlag) js_ast.Expr {
 	optionalChain := js_ast.OptionalChainNone
 
+	// We might be in the middle of a type cast "(42: number)"
+	// So we just return the prefixToken (left)
+	// if p.options.flow.Parse && p.lexer.Token == js_lexer.TColon {
+	// 	p.lexer.Next()
+	// 	p.skipFlowType(js_ast.LLowest)
+	// 	return left
+	// }
+
 	for {
 		if p.lexer.Loc() == p.afterArrowBodyLoc {
 			for {
@@ -3629,13 +3632,6 @@ func (p *parser) parseSuffix(left js_ast.Expr, level js_ast.L, errors *deferredE
 				}
 			}
 		}
-
-		// // If we are in Flow stop reading after : since it's a type
-		// if p.options.flow.Parse && p.lexer.Token == js_lexer.TColon {
-		// 	p.lexer.Next()
-		// 	p.skipFlowType(js_ast.LLowest)
-		// 	return left
-		// }
 
 		// Stop now if this token is forbidden to follow a TypeScript "as" cast
 		if p.lexer.Loc() == p.forbidSuffixAfterAsLoc {
@@ -14013,6 +14009,9 @@ var defaultJSXFactory = []string{"React", "createElement"}
 var defaultJSXFragment = []string{"React", "Fragment"}
 
 func Parse(log logger.Log, source logger.Source, options Options) (result js_ast.AST, ok bool) {
+	if options.flow.Parse == false {
+		fmt.Println("not parsing a flow module")
+	}
 	ok = true
 	defer func() {
 		r := recover()

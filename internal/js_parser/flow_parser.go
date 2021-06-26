@@ -146,8 +146,25 @@ func (p *parser) skipFlowType(level js_ast.L) {
 func (p *parser) skipFlowTypeWithOpts(level js_ast.L, opts skipTypeOpts) {
 	for {
 		switch p.lexer.Token {
-		// Optional type:  type A = ?string;
+		// This is super hacky :( but it handles cases like this return type "(): *=> "
+		case js_lexer.TAsteriskEquals:
+			if p.fnOrArrowDataParse.isReturnType {
+				p.lexer.Next()
+				// If we encounter a > after *= that means it's a arrow function
+				if p.lexer.Token == js_lexer.TGreaterThan {
+					// We trick the lexer into thinking it parsed that even though it didn't
+					// it's messy but it works
+					p.lexer.Token = js_lexer.TEqualsGreaterThan
+				}
+			}
+
+		// Optional type:  "type A = ?string" or "type A = string?"
 		case js_lexer.TQuestion:
+			p.lexer.Next()
+			continue
+
+			// type A = ??string
+		case js_lexer.TQuestionQuestion:
 			p.lexer.Next()
 			continue
 
@@ -329,13 +346,24 @@ func (p *parser) skipFlowTypeWithOpts(level js_ast.L, opts skipTypeOpts) {
 
 	for {
 		switch p.lexer.Token {
+		case js_lexer.TEqualsGreaterThan:
+			if p.fnOrArrowDataParse.isReturnType == false {
+				p.lexer.Next()
+				p.skipFlowType(js_ast.LLowest)
+			} else {
+				return
+			}
+
 		case js_lexer.TBar:
 			if level >= js_ast.LBitwiseOr {
 				return
 			}
+			// We copy the old lexer to lookahead
+			oldLexer := p.lexer
 			p.lexer.Next()
 			// Check if we are in an object closing brace |}
 			if p.lexer.Token == js_lexer.TCloseBrace {
+				p.lexer = oldLexer
 				return
 			}
 			p.skipFlowType(js_ast.LBitwiseOr)
@@ -524,6 +552,13 @@ func (p *parser) skipFlowObjectType() {
 		switch p.lexer.Token {
 		case js_lexer.TCloseBrace:
 
+		case js_lexer.TBar:
+			if exactObject {
+				p.lexer.Next()
+			} else {
+				p.lexer.Unexpected()
+			}
+
 		case js_lexer.TComma, js_lexer.TSemicolon:
 			p.lexer.Next()
 
@@ -532,6 +567,7 @@ func (p *parser) skipFlowObjectType() {
 				p.lexer.Unexpected()
 			}
 		}
+
 	}
 
 	// We ignore checking the exact object since skipFlowType above consumes the bar
@@ -588,6 +624,11 @@ func (p *parser) skipFlowTypeArguments(isInsideJSXElement bool) bool {
 	}
 
 	p.lexer.ExpectLessThan(false /* isInsideJSXElement */)
+
+	if p.lexer.Token == js_lexer.TGreaterThan {
+		p.lexer.Next()
+		return true
+	}
 
 	for {
 		p.skipFlowType(js_ast.LLowest)
@@ -663,6 +704,7 @@ func (p *parser) trySkipFlowArrowReturnTypeWithBacktracking() bool {
 		r := recover()
 		if _, isLexerPanic := r.(js_lexer.LexerPanic); isLexerPanic {
 			p.lexer = oldLexer
+			p.fnOrArrowDataParse.isReturnType = false
 		} else if r != nil {
 			panic(r)
 		}
