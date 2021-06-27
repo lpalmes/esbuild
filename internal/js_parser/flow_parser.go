@@ -454,11 +454,12 @@ func (p *parser) skipFlowObjectType() {
 			break
 		}
 
-		// Spread type into another object {| ...AnotherObject |}
+		// Spread type or open object type {| ...AnotherObject |} or { ... }
 		if p.lexer.Token == js_lexer.TDotDotDot {
 			p.lexer.Next()
-			if p.lexer.Token == js_lexer.TIdentifier {
-				p.lexer.Next()
+			// Wow this works and it's ugly :(
+			if p.lexer.Token != js_lexer.TBar && p.lexer.Token != js_lexer.TCloseBrace && p.lexer.Token != js_lexer.TSemicolon && p.lexer.Token != js_lexer.TComma {
+				p.skipFlowType(js_ast.LLowest)
 			}
 
 			switch p.lexer.Token {
